@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/utils"
@@ -28,7 +29,7 @@ func fiberHTTPForwardHandler(config ForwardConfig) fiber.Handler {
 		logrus.Debugf("req: %p, resp: %p", req, resp)
 
 		originalURL := utils.CopyString(c.OriginalURL())
-		originalPath := req.URI().Path()
+		originalPath := string(req.URI().Path())
 		logrus.Debugf("originalURL: %s, path: %s", originalURL, originalPath)
 		defer req.SetRequestURI(originalURL)
 
@@ -43,7 +44,11 @@ func fiberHTTPForwardHandler(config ForwardConfig) fiber.Handler {
 			req.URI().SetSchemeBytes(scheme)
 		}
 		if string(originalPath) != "/" {
-			req.URI().SetPath(string(utils.CopyString(targetPath.Path)) + string(originalPath))
+			logrus.Debugf("origpath != /: %s", originalPath)
+			remotePath := targetPath.Path + string(originalPath)
+			remotePath = strings.Replace(remotePath, "//", "/", 0)
+			logrus.Debugf("remote path: %s", remotePath)
+			req.URI().SetPath(remotePath)
 		}
 		if len(config.Headers) > 0 {
 			for _, header := range config.Headers {
